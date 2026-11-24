@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "kitbash_connector"
-version = "1.0.0"
+version = "1.1.5"
 name = "Kitbash Connector"
 tagline = "Assemble kitbash parts with surface anchors"
 maintainer = "Kitbash Connector contributors"

@@ -1,7 +1,5 @@
 """Persistent connector and connection property definitions."""
 
-from typing import Any
-
 import bpy
 from bpy.props import (
     BoolProperty,
@@ -13,6 +11,33 @@ from bpy.props import (
     StringProperty,
 )
 from bpy.types import Object, PropertyGroup, Scene
+
+
+_updating_depth = False
+
+
+def _update_connection_depth(
+    connection: "KitbashConnection",
+    context: bpy.types.Context,
+) -> None:
+    """Apply a changed depth slider to the active connection."""
+    global _updating_depth
+    if _updating_depth or (
+        not connection.is_connected
+        or connection.object_a is None
+        or connection.object_b is None
+    ):
+        return
+    from . import transforms
+
+    limit = context.scene.kitbash_settings.depth_limit
+    requested_depth = max(-limit, min(limit, connection.depth_offset))
+    _updating_depth = True
+    try:
+        connection.depth_offset = requested_depth
+        transforms.set_connection_depth(connection, requested_depth)
+    finally:
+        _updating_depth = False
 
 
 class KitbashConnectorPoint(PropertyGroup):
@@ -87,6 +112,25 @@ class KitbashConnection(PropertyGroup):
         description="Whether this relationship is actively constrained",
         default=True,
     )
+    depth_offset: FloatProperty(
+        name="Push In / Pull Out",
+        description="Slide the attached part along the connection direction",
+        subtype="DISTANCE",
+        min=-0.1,
+        max=0.1,
+        soft_min=-0.005,
+        soft_max=0.005,
+        step=1,
+        precision=3,
+        default=0.0,
+        update=_update_connection_depth,
+    )
+    applied_depth_offset: FloatProperty(
+        name="Applied Depth",
+        subtype="DISTANCE",
+        default=0.0,
+        options={"HIDDEN"},
+    )
 
 
 class KitbashSettings(PropertyGroup):
@@ -128,6 +172,17 @@ class KitbashSettings(PropertyGroup):
         name="Show Surface Normals",
         description="Draw connector surface-normal directions",
         default=False,
+    )
+    depth_limit: FloatProperty(
+        name="Push/Pull Limit",
+        description="Maximum guided depth adjustment in scene units",
+        subtype="DISTANCE",
+        min=0.0001,
+        max=0.1,
+        soft_min=0.001,
+        soft_max=0.02,
+        precision=3,
+        default=0.005,
     )
 
 

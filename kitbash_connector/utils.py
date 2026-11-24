@@ -95,6 +95,37 @@ def connection_for(
     return None
 
 
+def active_connection_endpoint(
+    scene: bpy.types.Scene,
+    obj: Optional[bpy.types.Object],
+) -> tuple[Optional[Any], Optional[Any]]:
+    """Return an active connection and its endpoint connector for an object."""
+    if obj is None:
+        return None, None
+    selected = active_connector(obj)
+    if selected is not None:
+        connection = connection_for(
+            scene,
+            obj,
+            selected.connector_id,
+            active_only=True,
+        )
+        if connection is not None:
+            return connection, selected
+    for connection in scene.kitbash_connections:
+        if not connection.is_connected:
+            continue
+        if connection.object_a == obj:
+            connector = connector_by_id(obj, connection.connector_a_id)
+            if connector is not None:
+                return connection, connector
+        if connection.object_b == obj:
+            connector = connector_by_id(obj, connection.connector_b_id)
+            if connector is not None:
+                return connection, connector
+    return None, None
+
+
 def pair_connection(
     scene: bpy.types.Scene,
     obj_a: bpy.types.Object,

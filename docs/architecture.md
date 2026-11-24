@@ -12,8 +12,9 @@ Each mesh object owns a collection of `KitbashConnectorPoint` values:
 Object-local storage is intentional. A connector follows an object's complete
 matrix without reacting to evaluated mesh topology or changing vertex data.
 Scene-level `KitbashConnection` values contain the two object pointers,
-connector IDs, shared world-space pivot, endpoint baseline quaternions, and
-active/disconnected state.
+connector IDs, shared world-space pivot, endpoint baseline quaternions,
+active/disconnected state, and applied push/pull depth. Connector metadata,
+object matrices, and actual mesh geometry remain separate concepts.
 
 ## Placement
 
@@ -44,6 +45,10 @@ Connecting obtains both world anchors. It left-multiplies the active/second
 object's matrix by `T(anchor_a - anchor_b)`. Translation in world space avoids
 coupling the offset to that object's scale or orientation.
 
+The guided workflow can first rotate the movable anchor about its own world
+position so its normal faces the target normal. Existing manual connections
+retain their original position-only behaviour.
+
 Rotation is applied as:
 
 ```text
@@ -53,6 +58,22 @@ new_matrix = T(pivot) * R * T(-pivot) * original_matrix
 The operation never changes `object.origin`; it transforms the full object
 matrix. The active connector remains numerically fixed for all angles and
 independent of the object's scale and origin.
+
+Push/pull translates the movable object along the target normal and recomputes
+the movable connector's local position so its world anchor remains at the
+shared pivot. Mesh vertices are unchanged.
+
+## Guided assembly state
+
+The Stick Parts Together operator holds the pending source hit in operator
+state until the user chooses a target. Cancelling either stage therefore leaves
+connector collections unchanged. Mouse movement uses non-mutating transform
+previews. The source and optional target connector are committed only after
+the final click.
+
+Viewport drawing highlights target points as available, selected, or already in
+use. A transformed local bounding box previews which object will move and where
+it will land.
 
 ## Constraint pass
 
@@ -71,7 +92,8 @@ avoid those incompatible joints.
 
 - `properties.py`: Blender RNA-backed persistence.
 - `placement.py`: viewport ray casting and local data creation.
-- `transforms.py`: connection lifecycle and matrix mathematics.
+- `transforms.py`: connection lifecycle, normal alignment, and matrix
+  mathematics.
 - `visuals.py`: GPU viewport drawing and constraint registration.
 - `operators.py`: modal placement and rotation plus management operations.
 - `panel.py`: N-panel controls and connector list.

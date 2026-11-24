@@ -6,11 +6,13 @@ space, so they follow the parent object's transforms without changing its mesh.
 
 ## Features
 
+- Guided **Stick Parts Together** workflow with automatic connection points.
 - Viewport ray-cast placement on the selected mesh.
 - Local-space connector positions and inverse-transpose surface normals.
 - Multiple connector points and multiple independent scene connections.
 - Exact anchor alignment while keeping both Blender objects editable.
-- Pivot-preserving X, Y, Z, and free viewport rotation.
+- Face-to-face normal alignment for guided assembly.
+- Pivot-preserving rotation dial, 15/90 degree steps, flip, and depth controls.
 - Active hinge constraints for ordinary object transforms.
 - Disconnect, reconnect, and rotation reset.
 - Viewport markers, normal previews, and connection lines.
@@ -24,7 +26,7 @@ space, so they follow the parent object's transforms without changing its mesh.
 
 ## Installation
 
-1. Download `kitbash_connector-1.0.0.zip`.
+1. Download `kitbash_connector-1.1.5.zip`.
 2. In Blender, open **Edit > Preferences > Get Extensions**.
 3. Choose the menu's **Install from Disk** command and select the ZIP.
 4. Enable **Kitbash Connector** if Blender does not enable it automatically.
@@ -35,15 +37,18 @@ view on supported versions.
 
 ## Quick Start
 
-1. Select a mesh and click **Place Connector**.
-2. Hover over a visible face and left-click to confirm.
-3. Select a second mesh, place another connector, and select both meshes.
-4. The last selected object is the object that moves during connection.
-5. Click **Connect Selected Anchors**.
-6. Select either connected object and rotate with X, Y, Z, or Free Rotate.
-7. Left-click to confirm a rotation or press Escape/right-click to cancel.
-8. Use **Disconnect** before unrestricted independent movement, or
-   **Reconnect** to restore the previously recorded pair.
+1. Select the mesh that should move.
+2. Click **Stick Parts Together**.
+3. Click a visible face on the moving part.
+4. Hover over another mesh and click an available connection point.
+5. If the target has no nearby point, clicking its surface creates one.
+6. Use the **ADJUST** controls to rotate, flip, or push/pull the attached part.
+   Use **Move Point** to reposition its connected anchor on the object's
+   surface, or **Remove Point** to remove the anchor and relationship.
+7. Use **Undo** at any time, or **Disconnect** to move the parts independently.
+
+The existing manual connector placement and selected-anchor workflow remain
+available in **ADVANCED**.
 
 See [docs/user-guide.md](docs/user-guide.md) for detailed controls and
 limitations.

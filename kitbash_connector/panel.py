@@ -47,25 +47,86 @@ class KITBASH_PT_connector_panel(bpy.types.Panel):
         obj = context.active_object
         settings = context.scene.kitbash_settings
 
-        placement = layout.box()
-        placement.label(text="Connector Placement", icon="PIVOT_CURSOR")
-        placement.operator(
-            "kitbash.place_connector",
-            text="Place Connector",
-            icon="ADD",
+        assemble = layout.box()
+        assemble.label(text="ASSEMBLE", icon="CONSTRAINT")
+        assemble.operator(
+            "kitbash.stick_parts",
+            text="Stick Parts Together",
+            icon="LINKED",
         )
-        placement.operator(
+        assemble.operator(
+            "kitbash.place_connector",
+            text="Add Connection Point",
+            icon="PIVOT_CURSOR",
+        )
+        assemble.label(text=self._connection_status(context), icon="INFO")
+
+        connection = self._active_connection(context)
+        adjust = layout.box()
+        adjust.label(text="ADJUST", icon="ORIENTATION_GIMBAL")
+        if connection is not None:
+            rotation = adjust.row(align=True)
+            for label, angle in (
+                ("-90", -1.5707963267948966),
+                ("-15", -0.2617993877991494),
+                ("+15", 0.2617993877991494),
+                ("+90", 1.5707963267948966),
+            ):
+                operator = rotation.operator(
+                    "kitbash.rotate_step",
+                    text=label,
+                )
+                operator.angle = angle
+            row = adjust.row(align=True)
+            row.operator("kitbash.flip_part", icon="FILE_REFRESH")
+            row.operator("kitbash.disconnect", icon="UNLINKED")
+            row = adjust.row(align=True)
+            row.operator(
+                "kitbash.move_connector",
+                text="Move Point",
+                icon="PIVOT_CURSOR",
+            )
+            row.operator(
+                "kitbash.remove_connector",
+                text="Remove Point",
+                icon="REMOVE",
+            )
+            adjust.prop(connection, "depth_offset", slider=True)
+            adjust.operator(
+                "kitbash.rotation_dial",
+                text="Rotation Dial",
+                icon="TRACKBALL",
+            )
+        else:
+            adjust.label(text="Connect parts to rotate or slide them.")
+        adjust.operator("ed.undo", text="Undo", icon="LOOP_BACK")
+
+        advanced = layout.box()
+        advanced.label(text="ADVANCED", icon="PREFERENCES")
+        advanced.operator(
+            "kitbash.connect_selected",
+            text="Connect Selected Anchors",
+            icon="LINKED",
+        )
+        row = advanced.row(align=True)
+        row.operator(
             "kitbash.remove_connector",
-            text="Remove Connector",
+            text="Remove Point",
             icon="REMOVE",
         )
-        visibility = placement.operator(
+        row.operator("kitbash.disconnect", icon="UNLINKED")
+        row.operator("kitbash.reconnect", icon="LINKED")
+        advanced.operator(
             "kitbash.toggle_connectors",
-            text="Hide Connectors" if settings.show_connectors else "Show Connectors",
+            text=(
+                "Hide Connectors"
+                if settings.show_connectors
+                else "Show Connectors"
+            ),
             icon="HIDE_OFF" if settings.show_connectors else "HIDE_ON",
         )
         if obj is not None and obj.type == "MESH":
-            placement.template_list(
+            advanced.template_list(
                 "KITBASH_UL_connectors",
                 "",
                 obj,
@@ -74,66 +135,57 @@ class KITBASH_PT_connector_panel(bpy.types.Panel):
                 "kitbash_active_connector",
                 rows=3,
             )
-
-        management = layout.box()
-        management.label(text="Connection Management", icon="CONSTRAINT")
-        management.operator(
-            "kitbash.connect_selected",
-            text="Connect Selected Anchors",
-            icon="LINKED",
-        )
-        row = management.row(align=True)
-        row.operator("kitbash.disconnect", icon="UNLINKED")
-        row.operator("kitbash.reconnect", icon="LINKED")
-        management.label(
-            text=self._connection_status(context),
-            icon="INFO",
-        )
-
-        manipulation = layout.box()
-        manipulation.label(text="Object Manipulation", icon="ORIENTATION_GIMBAL")
-        row = manipulation.row(align=True)
+        world_rotation = advanced.row(align=True)
         for axis in ("X", "Y", "Z"):
-            operator = row.operator(
+            operator = world_rotation.operator(
                 "kitbash.rotate_connector",
-                text=f"Rotate {axis}",
+                text=axis,
             )
             operator.axis = axis
-        operator = manipulation.operator(
+        free_rotation = advanced.operator(
             "kitbash.rotate_connector",
-            text="Free Rotate",
+            text="Free View Rotation",
             icon="TRACKBALL",
         )
-        operator.axis = "FREE"
-        manipulation.operator(
-            "kitbash.reset_rotation",
-            icon="LOOP_BACK",
-        )
-
-        display = layout.box()
-        display.label(text="Settings", icon="PREFERENCES")
-        display.prop(settings, "visual_size")
-        display.prop(settings, "display_color")
-        display.prop(settings, "snap_precision")
-        display.prop(settings, "show_connection_lines")
-        display.prop(settings, "show_surface_normals")
+        free_rotation.axis = "FREE"
+        advanced.operator("kitbash.reset_rotation", icon="LOOP_BACK")
+        advanced.prop(settings, "visual_size")
+        advanced.prop(settings, "display_color")
+        advanced.prop(settings, "snap_precision")
+        advanced.prop(settings, "show_connection_lines")
+        advanced.prop(settings, "show_surface_normals")
+        advanced.prop(settings, "depth_limit")
 
     @staticmethod
     def _connection_status(context: bpy.types.Context) -> str:
         active_obj = context.active_object
         connector = utils.active_connector(active_obj)
-        if connector is None:
-            return "Status: select an active connector"
-        connection = utils.connection_for(
+        connection, connected = utils.active_connection_endpoint(
             context.scene,
             active_obj,
-            connector.connector_id,
         )
+        connector = connected or connector
+        if connector is None:
+            return "Status: select an object with a connector"
+        if connection is None:
+            connection = utils.connection_for(
+                context.scene,
+                active_obj,
+                connector.connector_id,
+            )
         if connection is None:
             return "Status: available"
         if connection.is_connected:
             return "Status: connected and constrained"
         return "Status: disconnected (reconnectable)"
+
+    @staticmethod
+    def _active_connection(context: bpy.types.Context) -> Any:
+        connection, _connector = utils.active_connection_endpoint(
+            context.scene,
+            context.active_object,
+        )
+        return connection
 
 
 CLASSES = (

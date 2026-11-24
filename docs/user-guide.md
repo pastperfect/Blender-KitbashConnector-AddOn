@@ -1,5 +1,52 @@
 # Kitbash Connector User Guide
 
+## Guided assembly
+
+### Stick Parts Together
+
+1. Select the part that should move.
+2. Click **Stick Parts Together**.
+3. Click a visible face on that part. Green preview markers show valid surface
+   hits.
+4. Hover over another mesh. Green points are available, blue is the currently
+   selected point, and red points are already in use.
+5. Click an available point. If there is no nearby point, click the desired
+   target surface and Kitbash Connector creates one.
+6. The moving part is rotated to face the target and both new points are
+   aligned automatically.
+
+Middle-mouse orbit and pan, mouse-wheel zoom, trackpad gestures, and numpad view
+navigation remain available while this workflow is active.
+
+Escape or right-click cancels either stage without creating connector data.
+Existing connector points and scene connections are unchanged.
+
+### Simple adjustment controls
+
+After connecting, select either endpoint object and use **ADJUST**. You do not
+need to select a connector row manually:
+
+- Use the -90, -15, +15, and +90 degree buttons for repeatable rotation.
+- Drag **Rotation Dial** and left-click to confirm. Escape or right-click
+  restores the starting transform.
+- **Flip** turns the attached object 180 degrees while retaining its pivot.
+- **Push In / Pull Out** slides the moving part over a -5 mm to +5 mm range.
+  Blender scene units determine the displayed distance. Change **Push/Pull
+  Limit** in **ADVANCED** to use a different range.
+- **Move Point** repositions the active connected anchor by clicking another
+  visible surface on the same object. The connected object's transform changes
+  so the new point remains at the shared attachment pivot.
+- **Remove Point** removes the active anchor and its relationship.
+- **Undo** reverses the latest operation.
+
+Connected anchors are cyan, the selected anchor is blue, and other available
+anchors use the configured connector colour. To avoid contradictory multi-joint
+constraints, Move Point is disabled for an object with more than one active
+connection; disconnect the other connection first.
+
+Push/pull adjusts the moving connector's local offset, not the mesh vertices.
+The connector and its shared world-space pivot remain attached.
+
 ## Placing a connector
 
 1. Select one mesh.

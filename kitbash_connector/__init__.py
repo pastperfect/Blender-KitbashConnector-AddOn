@@ -3,7 +3,7 @@
 bl_info = {
     "name": "Kitbash Connector",
     "author": "Kitbash Connector contributors",
-    "version": (1, 0, 0),
+    "version": (1, 1, 5),
     "blender": (4, 2, 0),
     "location": "View3D > Sidebar > Kitbash Connector",
     "description": "Place surface anchors and assemble independent mesh objects",
