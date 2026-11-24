@@ -62,3 +62,30 @@ Outstanding limitations:
   categories and compatibility rules begin in Milestone 3.
 - The minimum supported Blender 4.2 runtime was not available in this
   environment; headless validation was run with Blender 5.0.
+
+## Milestone 2 - Cut Here and create connectors
+
+Status: complete and headless-validated.
+
+- Added an Object Mode viewport workflow for positioning and previewing a cut
+  plane without requiring Edit Mode.
+- Added Straight, Angled, and Custom presets plus Up/Down tilt and
+  R/Left/Right orientation controls.
+- Built the cut transaction on Blender BMesh copies: evaluate the source,
+  bisect into positive and negative halves, cap cut boundaries where
+  possible, validate the meshes, and only then create scene objects.
+- Preserved and hid the original object by default; disabling that option is
+  guarded by saved connection records.
+- Retained existing connector metadata on the geometric side containing its
+  point and generated a fresh, matching Cut Point pair with opposite normals.
+- Added explicit rollback and closed-mesh cap checks so failed operations do
+  not link partial objects or modify the source scene.
+
+Validation:
+
+- Blender 5.0 smoke assertions passed for a transformed, non-uniformly scaled
+  closed cube: both halves capped, matching connector positions and normals,
+  independently editable mesh results, and source preservation.
+- A plane outside the mesh raised the expected error without changing the
+  object count or source visibility.
+- Package version increased to 1.2.0 with a fresh versioned archive.

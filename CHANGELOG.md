@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0] - 2026-11-24
+
+### Added
+
+- Interactive Cut Here workflow with viewport plane positioning and preview.
+- Straight, angled, and custom cut presets with keyboard orientation
+  adjustment.
+- Non-destructive evaluated-mesh separation into two independently editable
+  objects.
+- Best-effort cut-surface capping and transactional failure rollback.
+- Matching opposite-facing connector points on both cut results.
+- Optional visibility-preserved original and the current-object connectors
+  retained on their resulting side.
+
 ## [1.1.5] - 2026-11-24
 
 ### Fixed

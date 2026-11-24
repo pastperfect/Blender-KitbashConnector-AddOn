@@ -1,12 +1,227 @@
 """Operators implementing connector and connection workflows."""
 
+import math
 from typing import Any, Optional
 
 import bpy
 from bpy.props import EnumProperty, FloatProperty
 from mathutils import Quaternion, Vector
 
-from . import placement, transforms, utils, visuals
+from . import cutting, placement, transforms, utils, visuals
+
+
+class KITBASH_OT_cut_here(bpy.types.Operator):
+    """Preview and confirm a non-destructive viewport mesh cut."""
+
+    bl_idname = "kitbash.cut_here"
+    bl_label = "Cut Here"
+    bl_options = {"REGISTER", "UNDO", "BLOCKING"}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj = context.active_object
+        return (
+            context.area is not None
+            and context.area.type == "VIEW_3D"
+            and obj is not None
+            and obj.type == "MESH"
+            and obj.mode == "OBJECT"
+        )
+
+    def invoke(
+        self,
+        context: bpy.types.Context,
+        event: bpy.types.Event,
+    ) -> set[str]:
+        self._source = context.active_object
+        self._position: Optional[Vector] = None
+        self._base_normal: Optional[Vector] = None
+        self._plane_locked = False
+        self._camera_navigation = False
+        self._axis_rotation = 0.0
+        settings = context.scene.kitbash_settings
+        self._angle = {
+            "STRAIGHT": 0.0,
+            "ANGLED": math.radians(45.0),
+            "CUSTOM": settings.cut_angle,
+        }[settings.cut_preset]
+        world_corners = [
+            self._source.matrix_world @ Vector(corner)
+            for corner in self._source.bound_box
+        ]
+        self._preview_radius = max(
+            (corner - self._source.location).length
+            for corner in world_corners
+        ) * 0.75
+        visuals.set_cut_preview(None, None)
+        context.window_manager.modal_handler_add(self)
+        context.window.cursor_modal_set("CROSSHAIR")
+        self._set_status(
+            context,
+            "Hover over the mesh and click to lock the cutting plane.",
+        )
+        return {"RUNNING_MODAL"}
+
+    def modal(
+        self,
+        context: bpy.types.Context,
+        event: bpy.types.Event,
+    ) -> set[str]:
+        if event.type in {"RIGHTMOUSE", "ESC"}:
+            self._finish(context)
+            return {"CANCELLED"}
+        if event.type == "MIDDLEMOUSE":
+            self._camera_navigation = event.value == "PRESS"
+            return {"PASS_THROUGH"}
+        if self._camera_navigation and event.type == "MOUSEMOVE":
+            return {"PASS_THROUGH"}
+        if KITBASH_OT_stick_parts._is_navigation_event(event):
+            return {"PASS_THROUGH"}
+        if event.type == "MOUSEMOVE" and not self._plane_locked:
+            self._update_plane_from_cursor(context, event)
+        elif event.type in {"UPARROW", "DOWNARROW"}:
+            direction = 1.0 if event.type == "UPARROW" else -1.0
+            self._angle = max(
+                math.radians(-89.0),
+                min(
+                    math.radians(89.0),
+                    self._angle + direction * math.radians(5.0),
+                ),
+            )
+            self._update_preview(context)
+        elif event.type in {"R", "LEFTARROW", "RIGHTARROW"}:
+            if event.value == "PRESS":
+                direction = -1.0 if event.type == "LEFTARROW" else 1.0
+                self._axis_rotation += direction * math.radians(15.0)
+                self._update_preview(context)
+                self._set_adjust_status(context)
+        elif event.type == "LEFTMOUSE" and event.value == "PRESS":
+            if not self._plane_locked:
+                self._lock_plane(context, event)
+            else:
+                return self._confirm_cut(context)
+        elif event.type in {"RET", "NUMPAD_ENTER"}:
+            if event.value == "PRESS":
+                if not self._plane_locked:
+                    self.report(
+                        {"WARNING"},
+                        "Click the mesh to position the cutting plane first.",
+                    )
+                else:
+                    return self._confirm_cut(context)
+        return {"RUNNING_MODAL"}
+
+    def _update_plane_from_cursor(
+        self,
+        context: bpy.types.Context,
+        event: bpy.types.Event,
+    ) -> None:
+        hit = placement.raycast_surface(
+            context,
+            self._source,
+            (event.mouse_region_x, event.mouse_region_y),
+        )
+        if hit is None:
+            self._position = None
+            self._base_normal = None
+            visuals.set_cut_preview(None, None)
+            return
+        self._position, self._base_normal = hit
+        self._update_preview(context)
+
+    def _lock_plane(
+        self,
+        context: bpy.types.Context,
+        event: bpy.types.Event,
+    ) -> None:
+        self._update_plane_from_cursor(context, event)
+        if self._position is None:
+            self.report(
+                {"WARNING"},
+                "Click a visible face on the selected mesh.",
+            )
+            return
+        self._plane_locked = True
+        self._set_adjust_status(context)
+
+    def _update_preview(self, context: bpy.types.Context) -> None:
+        if self._position is None or self._base_normal is None:
+            return
+        view_right = context.region_data.view_rotation @ Vector(
+            (1.0, 0.0, 0.0),
+        )
+        plane_normal = cutting.tilted_plane_normal(
+            self._base_normal,
+            view_right,
+            self._angle,
+            self._axis_rotation,
+        )
+        self._plane_normal = plane_normal
+        visuals.set_cut_preview(
+            self._position,
+            plane_normal,
+            self._preview_radius,
+        )
+
+    def _confirm_cut(
+        self,
+        context: bpy.types.Context,
+    ) -> set[str]:
+        if self._position is None or not hasattr(self, "_plane_normal"):
+            self.report({"ERROR"}, "Position a cutting plane before confirming.")
+            return {"RUNNING_MODAL"}
+        settings = context.scene.kitbash_settings
+        try:
+            result = cutting.split_mesh(
+                self._source,
+                self._position,
+                self._plane_normal,
+                cap_surfaces=settings.cut_cap_surfaces,
+                preserve_original=settings.cut_preserve_original,
+                snap_precision=settings.snap_precision,
+                visual_size=settings.visual_size,
+            )
+        except (cutting.CutError, RuntimeError) as error:
+            self.report({"ERROR"}, str(error))
+            return {"RUNNING_MODAL"}
+        if (
+            settings.cut_cap_surfaces
+            and not (result.capped_positive and result.capped_negative)
+        ):
+            self.report(
+                {"WARNING"},
+                "The mesh was split, but a complex open boundary was not capped.",
+            )
+        else:
+            self.report(
+                {"INFO"},
+                "Cut complete. Matching connection points were created.",
+            )
+        self._finish(context)
+        return {"FINISHED"}
+
+    def _set_adjust_status(self, context: bpy.types.Context) -> None:
+        self._set_status(
+            context,
+            (
+                "Cut plane locked: Up/Down tilts the plane, "
+                "R/Left/Right rotates it, "
+                "and click or Enter cuts."
+            ),
+        )
+
+    @staticmethod
+    def _set_status(context: bpy.types.Context, message: str) -> None:
+        context.workspace.status_text_set(message)
+        context.area.header_text_set(message)
+
+    @staticmethod
+    def _finish(context: bpy.types.Context) -> None:
+        visuals.set_cut_preview(None, None)
+        context.window.cursor_modal_restore()
+        context.workspace.status_text_set(None)
+        context.area.header_text_set(None)
+        utils.redraw_viewports()
 
 
 class KITBASH_OT_place_connector(bpy.types.Operator):
@@ -804,6 +1019,7 @@ class KITBASH_OT_flip_part(bpy.types.Operator):
 
 
 CLASSES = (
+    KITBASH_OT_cut_here,
     KITBASH_OT_place_connector,
     KITBASH_OT_stick_parts,
     KITBASH_OT_move_connector,

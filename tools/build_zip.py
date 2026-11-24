@@ -15,6 +15,7 @@ INCLUDED_FILES = (
     "transforms.py",
     "utils.py",
     "visuals.py",
+    "cutting.py",
     "operators.py",
     "panel.py",
     "blender_manifest.toml",

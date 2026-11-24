@@ -39,6 +39,19 @@ local_normal = normalize(A^T * world_normal)
 This is necessary for objects with non-uniform scale. A plain inverse or a
 rotation-only conversion gives incorrect normal direction in that case.
 
+## Cutting transaction
+
+`cutting.py` builds two BMesh copies from the object's evaluated mesh. It uses
+`bisect_plane` with opposite clear-side arguments, fills boundary edges on the
+cut plane where possible, validates each resulting mesh, and only then links
+two result objects into the source object's collections.
+
+The source remains unchanged throughout construction. It is hidden after
+success when **Keep Original** is enabled. Any failure before commit removes
+temporary objects and mesh data. Existing connectors are classified onto the
+side containing their local point, and a fresh connector pair is created from
+the cut-boundary centroid with opposite world normals.
+
 ## Alignment and pivot rotation
 
 Connecting obtains both world anchors. It left-multiplies the active/second
@@ -91,6 +104,8 @@ avoid those incompatible joints.
 ## Module boundaries
 
 - `properties.py`: Blender RNA-backed persistence.
+- `cutting.py`: transactional BMesh separation, capping, and connector
+  generation.
 - `placement.py`: viewport ray casting and local data creation.
 - `transforms.py`: connection lifecycle, normal alignment, and matrix
   mathematics.

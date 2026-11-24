@@ -1,5 +1,34 @@
 # Kitbash Connector User Guide
 
+## Cut Here
+
+Use Cut Here to turn an imported model into two independently editable mesh
+objects without entering Edit Mode:
+
+1. Select one mesh in Object Mode.
+2. Choose **Straight Cut**, **Angled Cut**, or **Custom Cut** in the CUT
+   section. Straight follows the picked surface normal, Angled starts at
+   45 degrees, and Custom uses **Custom Cut Angle**.
+3. Click **Cut Here**, then move the pointer over a visible face. The orange
+   rectangle previews the cutting plane.
+4. Left-click to lock the plane's position.
+5. Use Up/Down to tilt the plane and R or Left/Right to rotate its tilt
+   direction. Viewport orbit, pan, and zoom remain available.
+6. Click again or press Enter to cut. Escape or right-click cancels without
+   changing the scene.
+
+The source object's evaluated geometry is split non-destructively. By default,
+**Keep Original** leaves the source object in the scene but hides it from the
+viewport and renders. The two visible result objects each contain a matching
+Cut Point at the same world position with opposite normals, so Stick Parts
+Together can reconnect them later.
+
+With **Cap Cut Surfaces** enabled, planar cut boundaries are filled where
+possible. Blender reports and aborts a cut rather than leaving an unsafe
+incomplete result when a closed mesh cannot be capped. Open STL boundaries
+that cannot be filled safely remain open and generate a warning. Existing
+connector points are retained on the side of the cut that contains them.
+
 ## Guided assembly
 
 ### Stick Parts Together

@@ -7,6 +7,8 @@ space, so they follow the parent object's transforms without changing its mesh.
 ## Features
 
 - Guided **Stick Parts Together** workflow with automatic connection points.
+- Non-destructive **Cut Here** mesh separation with plane preview and capping.
+- Straight, angled, and custom cuts with automatic matching connectors.
 - Viewport ray-cast placement on the selected mesh.
 - Local-space connector positions and inverse-transpose surface normals.
 - Multiple connector points and multiple independent scene connections.
@@ -26,7 +28,7 @@ space, so they follow the parent object's transforms without changing its mesh.
 
 ## Installation
 
-1. Download `kitbash_connector-1.1.5.zip`.
+1. Download `kitbash_connector-1.2.0.zip`.
 2. In Blender, open **Edit > Preferences > Get Extensions**.
 3. Choose the menu's **Install from Disk** command and select the ZIP.
 4. Enable **Kitbash Connector** if Blender does not enable it automatically.
@@ -46,6 +48,11 @@ view on supported versions.
    Use **Move Point** to reposition its connected anchor on the object's
    surface, or **Remove Point** to remove the anchor and relationship.
 7. Use **Undo** at any time, or **Disconnect** to move the parts independently.
+
+To split an imported model, select the mesh and click **Cut Here**. Hover over
+the desired surface, click to position the plane, adjust it with Up/Down and
+R/Left/Right, then click or press Enter. The original is retained and hidden;
+the two generated objects receive matching connection points.
 
 The existing manual connector placement and selected-anchor workflow remain
 available in **ADVANCED**.

@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import bmesh
 import bpy
 from mathutils import Matrix, Quaternion, Vector
 
@@ -14,7 +15,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import kitbash_connector  # noqa: E402
-from kitbash_connector import panel, placement, transforms, utils  # noqa: E402
+from kitbash_connector import (  # noqa: E402
+    cutting,
+    panel,
+    placement,
+    transforms,
+    utils,
+)
 
 
 TOLERANCE = 1.0e-5
@@ -258,6 +265,73 @@ def run_tests() -> None:
         pass
     else:
         raise AssertionError("Duplicate active connection was accepted.")
+
+    cut_source = add_cube("Cut Source", (8.0, 0.0, 0.0))
+    cut_source.scale = (1.5, 0.75, 2.25)
+    cut_source.rotation_euler = (0.2, -0.3, 0.4)
+    bpy.context.view_layer.update()
+    result = cutting.split_mesh(
+        cut_source,
+        Vector((8.0, 0.0, 0.0)),
+        Vector((0.0, 0.0, 1.0)),
+        cap_surfaces=True,
+        preserve_original=True,
+        snap_precision=6,
+    )
+    if not result.capped_positive or not result.capped_negative:
+        raise AssertionError("A closed cube cut surface was not capped.")
+    if not cut_source.hide_get():
+        raise AssertionError("The preserved source was not hidden after cutting.")
+    positive_anchor = utils.connector_world_position(
+        result.positive,
+        result.positive_connector,
+    )
+    negative_anchor = utils.connector_world_position(
+        result.negative,
+        result.negative_connector,
+    )
+    assert_near(
+        positive_anchor,
+        negative_anchor,
+        "Cut connector alignment",
+    )
+    positive_normal = utils.connector_world_normal(
+        result.positive,
+        result.positive_connector,
+    )
+    negative_normal = utils.connector_world_normal(
+        result.negative,
+        result.negative_connector,
+    )
+    if abs(positive_normal.dot(negative_normal) + 1.0) > TOLERANCE:
+        raise AssertionError("Cut connectors did not face one another.")
+    if result.positive.type != "MESH" or result.negative.type != "MESH":
+        raise AssertionError("Cut results are not independently editable meshes.")
+    for cut_object in (result.positive, result.negative):
+        cut_bmesh = bmesh.new()
+        try:
+            cut_bmesh.from_mesh(cut_object.data)
+            if any(edge.is_boundary for edge in cut_bmesh.edges):
+                raise AssertionError(
+                    "A closed cube retained a boundary after cut.",
+                )
+        finally:
+            cut_bmesh.free()
+
+    miss_source = add_cube("Cut Miss", (-8.0, 0.0, 0.0))
+    object_count = len(bpy.data.objects)
+    try:
+        cutting.split_mesh(
+            miss_source,
+            Vector((-8.0, 0.0, 3.0)),
+            Vector((0.0, 0.0, 1.0)),
+        )
+    except cutting.CutError:
+        pass
+    else:
+        raise AssertionError("A plane outside the mesh was accepted.")
+    if len(bpy.data.objects) != object_count or miss_source.hide_get():
+        raise AssertionError("A failed cut changed the source scene.")
 
     obj_c = add_cube("Anchor C", (1.0, 4.0, -2.0))
     connector_b_child = add_point(

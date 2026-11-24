@@ -47,6 +47,19 @@ class KITBASH_PT_connector_panel(bpy.types.Panel):
         obj = context.active_object
         settings = context.scene.kitbash_settings
 
+        cut = layout.box()
+        cut.label(text="CUT", icon="SCULPTMODE_HLT")
+        cut.operator(
+            "kitbash.cut_here",
+            text="Cut Here",
+            icon="MOD_BOOLEAN",
+        )
+        cut.prop(settings, "cut_preset")
+        if settings.cut_preset == "CUSTOM":
+            cut.prop(settings, "cut_angle")
+        cut.prop(settings, "cut_cap_surfaces")
+        cut.prop(settings, "cut_preserve_original")
+
         assemble = layout.box()
         assemble.label(text="ASSEMBLE", icon="CONSTRAINT")
         assemble.operator(

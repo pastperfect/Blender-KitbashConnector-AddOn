@@ -4,6 +4,7 @@ import bpy
 from bpy.props import (
     BoolProperty,
     CollectionProperty,
+    EnumProperty,
     FloatProperty,
     FloatVectorProperty,
     IntProperty,
@@ -183,6 +184,46 @@ class KitbashSettings(PropertyGroup):
         soft_max=0.02,
         precision=3,
         default=0.005,
+    )
+    cut_preset: EnumProperty(
+        name="Cut Type",
+        description="Initial orientation for Cut Here",
+        items=[
+            (
+                "STRAIGHT",
+                "Straight Cut",
+                "Place the cut perpendicular to the picked surface",
+            ),
+            (
+                "ANGLED",
+                "Angled Cut",
+                "Start with a 45 degree angled cut",
+            ),
+            (
+                "CUSTOM",
+                "Custom Cut",
+                "Use the custom cut angle below",
+            ),
+        ],
+        default="STRAIGHT",
+    )
+    cut_angle: FloatProperty(
+        name="Custom Cut Angle",
+        description="Tilt from the picked surface normal for custom cuts",
+        subtype="ANGLE",
+        min=-1.5533430342749532,
+        max=1.5533430342749532,
+        default=0.0,
+    )
+    cut_cap_surfaces: BoolProperty(
+        name="Cap Cut Surfaces",
+        description="Close generated cut boundaries where Blender can do so",
+        default=True,
+    )
+    cut_preserve_original: BoolProperty(
+        name="Keep Original",
+        description="Keep the source object hidden after a successful cut",
+        default=True,
     )
 
 

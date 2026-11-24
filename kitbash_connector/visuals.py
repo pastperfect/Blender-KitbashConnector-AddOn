@@ -17,6 +17,9 @@ _MATCH_OBJECT: Optional[bpy.types.Object] = None
 _MATCH_CONNECTOR_ID: Optional[str] = None
 _MOVABLE_OBJECT: Optional[bpy.types.Object] = None
 _PREVIEW_MATRIX: Optional[Matrix] = None
+_CUT_POSITION: Optional[Vector] = None
+_CUT_NORMAL: Optional[Vector] = None
+_CUT_RADIUS = 1.0
 
 
 def set_preview(position: Optional[Vector], normal: Optional[Vector]) -> None:
@@ -46,6 +49,19 @@ def set_match_preview(
     _PREVIEW_MATRIX = (
         preview_matrix.copy() if preview_matrix is not None else None
     )
+    utils.redraw_viewports()
+
+
+def set_cut_preview(
+    position: Optional[Vector],
+    normal: Optional[Vector],
+    radius: float = 1.0,
+) -> None:
+    """Set the viewport cutting-plane preview."""
+    global _CUT_POSITION, _CUT_NORMAL, _CUT_RADIUS
+    _CUT_POSITION = position.copy() if position is not None else None
+    _CUT_NORMAL = normal.normalized() if normal is not None else None
+    _CUT_RADIUS = radius
     utils.redraw_viewports()
 
 
@@ -121,12 +137,41 @@ def _draw_match_preview() -> None:
     _draw_lines(preview_lines, (0.2, 0.65, 1.0, 0.85), 2.0)
 
 
+def _draw_cut_preview() -> None:
+    if _CUT_POSITION is None or _CUT_NORMAL is None:
+        return
+    normal = _CUT_NORMAL
+    reference = Vector((0.0, 0.0, 1.0))
+    if abs(normal.dot(reference)) > 0.9:
+        reference = Vector((1.0, 0.0, 0.0))
+    tangent = normal.cross(reference).normalized()
+    bitangent = normal.cross(tangent).normalized()
+    first = _CUT_POSITION + (tangent - bitangent) * _CUT_RADIUS
+    second = _CUT_POSITION + (tangent + bitangent) * _CUT_RADIUS
+    third = _CUT_POSITION + (-tangent + bitangent) * _CUT_RADIUS
+    fourth = _CUT_POSITION + (-tangent - bitangent) * _CUT_RADIUS
+    _draw_lines(
+        [first, second, second, third, third, fourth, fourth, first],
+        (1.0, 0.45, 0.1, 0.95),
+        2.5,
+    )
+    _draw_lines(
+        [
+            _CUT_POSITION - normal * _CUT_RADIUS * 0.35,
+            _CUT_POSITION + normal * _CUT_RADIUS * 0.35,
+        ],
+        (1.0, 0.75, 0.15, 1.0),
+        2.0,
+    )
+
+
 def draw_connectors() -> None:
     """Draw connector points, normals, lines, and placement preview."""
     context = bpy.context
     scene = context.scene
     if scene is None or not hasattr(scene, "kitbash_settings"):
         return
+    _draw_cut_preview()
     settings = scene.kitbash_settings
     if not settings.show_connectors:
         return
@@ -234,6 +279,7 @@ def disable_draw_handler() -> None:
         _DRAW_HANDLER = None
     set_preview(None, None)
     set_match_preview(None, None)
+    set_cut_preview(None, None)
 
 
 def enable_constraints() -> None:
