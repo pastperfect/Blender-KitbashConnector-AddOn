@@ -1,0 +1,11 @@
+schema_version = "1.0.0"
+
+id = "kitbash_connector"
+version = "1.0.0"
+name = "Kitbash Connector"
+tagline = "Assemble kitbash parts with surface anchors"
+maintainer = "Kitbash Connector contributors"
+type = "add-on"
+tags = ["Modeling", "Object"]
+blender_version_min = "4.2.0"
+license = ["SPDX:MIT"]
